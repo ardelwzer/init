@@ -1,5 +1,11 @@
-;;My init.el file
-;; ver. 0.3
+;;; package --- Summary
+;;; My init.el file
+;;; ver. 0.3
+
+;;; Commentary:
+;;; attempt to emacs: 7
+
+;;; Code:
 
 ;;setup package management
 (require 'package)
@@ -118,6 +124,134 @@
   :after company
   :defer t)
 
+;; counsel-M-x can use this one
+(use-package amx :ensure t :defer t)
+
+(use-package ivy
+  :ensure t
+  :custom
+  ;; (ivy-re-builders-alist '((t . ivy--regex-fuzzy)))
+  (ivy-count-format "%d/%d " "Show anzu-like counter")
+  (ivy-use-selectable-prompt t "Make the prompt line selectable")
+  :custom-face
+  (ivy-current-match ((t (:inherit 'hl-line))))
+  :bind
+  (:map mode-specific-map
+        ("C-r" . ivy-resume))
+  :config
+  (ivy-mode t))
+
+(use-package ivy-xref
+  :ensure t
+  :defer t
+  :custom
+  (xref-show-xrefs-function #'ivy-xref-show-xrefs "Use Ivy to show xrefs"))
+
+(use-package counsel
+  :ensure t
+  :bind
+  (([remap menu-bar-open] . counsel-tmm)
+   ([remap insert-char] . counsel-unicode-char)
+   ([remap isearch-forward] . counsel-grep-or-swiper)
+   :map mode-specific-map
+   :prefix-map counsel-prefix-map
+   :prefix "c"
+   ("a" . counsel-apropos)
+   ("b" . counsel-bookmark)
+   ("B" . counsel-bookmarked-directory)
+   ("c w" . counsel-colors-web)
+   ("c e" . counsel-colors-emacs)
+   ("d" . counsel-dired-jump)
+   ("f" . counsel-file-jump)
+   ("F" . counsel-faces)
+   ("g" . counsel-org-goto)
+   ("h" . counsel-command-history)
+   ("H" . counsel-minibuffer-history)
+   ("i" . counsel-imenu)
+   ("j" . counsel-find-symbol)
+   ("l" . counsel-locate)
+   ("L" . counsel-find-library)
+   ("m" . counsel-mark-ring)
+   ("o" . counsel-outline)
+   ("O" . counsel-find-file-extern)
+   ("p" . counsel-package)
+   ("r" . counsel-recentf)
+   ("s g" . counsel-grep)
+   ("s r" . counsel-rg)
+   ("s s" . counsel-ag)
+   ("t" . counsel-org-tag)
+   ("v" . counsel-set-variable)
+   ("w" . counsel-wmctrl)
+   :map help-map
+   ("F" . counsel-describe-face))
+  :custom
+  (counsel-grep-base-command
+   "rg -i -M 120 --no-heading --line-number --color never %s %s")
+  (counsel-search-engines-alist
+   '((google
+      "http://suggestqueries.google.com/complete/search"
+      "https://www.google.com/search?q="
+      counsel--search-request-data-google)
+     (ddg
+      "https://duckduckgo.com/ac/"
+      "https://duckduckgo.com/html/?q="
+      counsel--search-request-data-ddg)))
+  :init
+  (counsel-mode))
+
+(use-package swiper :ensure t)
+
+(use-package counsel-web
+  :defer t
+  :quelpa
+  (counsel-web :repo "mnewt/counsel-web" :fetcher github))
+
+(use-package counsel-world-clock
+  :ensure t
+  :after counsel
+  :bind
+  (:map counsel-prefix-map
+        ("C" .  counsel-world-clock)))
+
+(use-package ivy-rich
+  :ensure t
+  :config
+  (ivy-rich-mode 1))
+
+(use-package helm-make
+  :defer t
+  :ensure t
+  :custom (helm-make-completion-method 'ivy))
+
+(use-package avy
+  :ensure t
+  :bind
+  (("C-:" .   avy-goto-char-timer)
+   ("C-." .   avy-goto-word-1)
+   :map goto-map
+   ("M-g" . avy-goto-line)
+   :map search-map
+   ("M-s" . avy-goto-word-1)))
+
+(use-package avy-zap
+  :ensure t
+  :bind
+  ([remap zap-to-char] . avy-zap-to-char))
+
+(use-package flycheck
+  :ensure t
+  :hook
+  (prog-mode . flycheck-mode))
+
+(use-package avy-flycheck
+  :ensure t
+  :defer t
+  :config
+  (avy-flycheck-setup))
+
+;; -- end autocomplete
+
+
 ;; elisp
 (use-package lisp
   :hook
@@ -174,9 +308,48 @@
   (nameless-global-aliases '())
   (nameless-private-prefix t))
 
-;; let's try evil mode
+;; LSP mode
+(use-package lsp-mode
+  :ensure t
+  :hook (
+         ((c-mode c++-mode) . lsp-deferred)
+	 (lsp-mode . lsp-enable-which-key-integration))
+  :commands lsp)
+
+(use-package lsp-ui
+  :ensure t
+  :commands lsp-ui-mode)
+
+(use-package lsp-ivy
+  :ensure t
+  :commands lsp-ivy-workspace-symbol)
+
+(use-package dap-mode
+  :ensure t)
+
+;; evil mode. disabled for now.
 ;; (use-package evil
 ;;  :ensure t)
+
+;; projects
+(use-package projectile
+  :defer 0.2
+  :ensure t
+  :bind
+  (:map mode-specific-map ("p" . projectile-command-map))
+  :custom
+  (projectile-project-root-files-functions
+   '(projectile-root-local
+     projectile-root-top-down
+     projectile-root-bottom-up
+     projectile-root-top-down-recurring))
+  (projectile-completion-system 'ivy))
+
+(use-package counsel-projectile
+  :ensure t
+  :after counsel projectile
+  :config
+  (counsel-projectile-mode))
 
 (load-theme 'manoj-dark t)
 
@@ -261,6 +434,22 @@
   :hook
   (dired-mode . all-the-icons-dired-mode))
 
+(use-package all-the-icons-ivy
+  :defer t
+  :ensure t
+  :after ivy
+  :custom
+  (all-the-icons-ivy-buffer-commands '() "Don't use for buffers.")
+  :config
+  (all-the-icons-ivy-setup))
+
+(use-package mood-line
+  :ensure t
+  :custom-face
+  (mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button))))))
+  :hook
+  (after-init . mood-line-mode))
+
 (use-package winner
   :config
   (winner-mode 1))
@@ -281,32 +470,4 @@
   :custom
   (tooltip-mode -1))
 
-;; (use-package time
-;;   :defer t
-;;   :custom
-;;   (display-time-default-load-average nil)
-;;   (display-time-24hr-format t)
-;;   (display-time-mode t))
-
-;; (use-package fancy-battery
-;;   :ensure t
-;;   :hook
-;;   (after-init . fancy-battery-mode))
-
-
-
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(fancy-battery mood-line lor-theme paradox evil nameless ipretty suggest eros highlight-sexp highlight-quoted highlight-defined rainbow-mode rainbow-identifiers rainbow-delimiters quelpa-use-package page-break-lines hl-todo highlight-numbers highlight-escape-sequences eshell-toggle eshell-prompt-extras esh-help esh-autosuggest company-shell company-quickhelp)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(hl-todo ((t (:inherit hl-todo :italic t))))
- '(mode-line ((t (:inherit default (:box (:line-width -1 :style released-button)))))))
+;;; init.el ends here
