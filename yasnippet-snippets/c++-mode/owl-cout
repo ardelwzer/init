@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: debug log
+# key: mowl
+# --
+std::cout << "\033[1;35mOWL: " << __func__ << " " << $0 << "\n";

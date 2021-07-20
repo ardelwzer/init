@@ -48,6 +48,16 @@
   (setq quelpa-use-package-inhibit-loading-quelpa t)
   :ensure t)
 
+;; global hotkeys
+(global-set-key (quote [M-down]) (quote scroll-up-line))
+(global-set-key (quote [M-up]) (quote scroll-down-line))
+
+(use-package emacs
+  :custom
+  (indent-tabs-mode nil "Spaces!")
+  (x-gtk-use-system-tooltips nil)
+   (default-frame-alist '((menu-bar-lines 0)
+                         (tool-bar-lines -1))))
 
 ;; some highlighting
 (use-package paren
@@ -87,16 +97,16 @@
   :hook
   (prog-mode . rainbow-delimiters-mode))
 
-(use-package rainbow-identifiers
-  :ensure t
-  :custom
-  (rainbow-identifiers-cie-l*a*b*-lightness 80)
-  (rainbow-identifiers-cie-l*a*b*-saturation 50)
-  (rainbow-identifiers-choose-face-function
-   #'rainbow-identifiers-cie-l*a*b*-choose-face)
-  :hook
-  (emacs-lisp-mode . rainbow-identifiers-mode) actually, turn it off
-  (prog-mode . rainbow-identifiers-mode))
+;; (use-package rainbow-identifiers
+;;   :ensure t
+;;   :custom
+;;   (rainbow-identifiers-cie-l*a*b*-lightness 80)
+;;   (rainbow-identifiers-cie-l*a*b*-saturation 50)
+;;   (rainbow-identifiers-choose-face-function
+;;    #'rainbow-identifiers-cie-l*a*b*-choose-face)
+;;   :hook
+;;   (emacs-lisp-mode . rainbow-identifiers-mode) actually, turn it off
+;;   (prog-mode . rainbow-identifiers-mode))
 
 (use-package rainbow-mode
   :ensure t
@@ -108,7 +118,8 @@
   :bind
   (:map company-active-map
         ("C-n" . company-select-next-or-abort)
-        ("C-p" . company-select-previous-or-abort))
+        ("C-p" . company-select-previous-or-abort)
+        ("C-c c" . company-complete))
   :hook
   (after-init . global-company-mode))
 
@@ -116,7 +127,7 @@
   :ensure t
   :defer t
   :custom
-  (company-quickhelp-delay 3)
+  (company-quickhelp-delay 1.5)
   (company-quickhelp-mode 1))
 
 (use-package company-shell
@@ -238,6 +249,40 @@
   :bind
   ([remap zap-to-char] . avy-zap-to-char))
 
+(use-package ace-jump-buffer
+  :ensure t
+  :bind
+  (:map goto-map
+        ("b" . ace-jump-buffer)))
+
+(use-package ace-window
+  :ensure t
+  :custom
+  (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l) "Use home row for selecting.")
+  (aw-scope 'global "Manage windows")
+  :bind
+  ("M-o" . ace-window))
+
+(use-package link-hint
+  :ensure t
+  :bind
+  (("<XF86Search>" . link-hint-open-link)
+   ("S-<XF86Search>" . link-hint-copy-link)
+   :map mode-specific-map
+   :prefix-map link-hint-keymap
+   :prefix "l"
+   ("o" . link-hint-open-link)
+   ("c" . link-hint-copy-link)))
+
+(use-package ace-link
+  :ensure t
+  :after link-hint ; to use prefix keymap
+  :bind
+  (:map link-hint-keymap
+        ("l" . counsel-ace-link))
+  :config
+  (ace-link-setup-default))
+
 (use-package flycheck
   :ensure t
   :hook
@@ -308,13 +353,19 @@
   (nameless-global-aliases '())
   (nameless-private-prefix t))
 
+
+;;; Programming
 ;; LSP mode
 (use-package lsp-mode
   :ensure t
   :hook (
          ((c-mode c++-mode) . lsp-deferred)
 	 (lsp-mode . lsp-enable-which-key-integration))
-  :commands lsp)
+  :commands lsp
+  :config
+  (define-key lsp-mode-map (kbd "C-;") lsp-command-map)
+  :custom
+  (lsp-enable-xref t))
 
 (use-package lsp-ui
   :ensure t
@@ -324,12 +375,140 @@
   :ensure t
   :commands lsp-ivy-workspace-symbol)
 
-(use-package dap-mode
+;; c++ config
+
+(use-package cc-mode
+  :config
+  (c-set-offset 'substatement-open 0))
+
+;; modern c++ code highlighting
+(use-package modern-cpp-font-lock
+  :ensure t
+  :config
+  (modern-c++-font-lock-global-mode t))
+
+(use-package ivy-rtags
   :ensure t)
+
+;; setup navigation for c/c++
+(use-package rtags
+  :ensure t
+  :config
+  (progn
+    (defun rtags-load-compile-commands ()
+      "Load the closest compile_commands.json."
+      (let* ((file-path (buffer-file-name))
+	     (path-list (split-string file-path "/")))
+	(while (> (length path-list) 2)
+	  (setq path-list (nbutlast path-list 1))
+	  (let ((cmds-path
+		 (format "%s/compile_commands.json"
+			 (mapconcat 'identity path-list "/"))))
+	    (when (file-exists-p cmds-path)
+	      (shell-command
+	       (format "%s -J %s"
+		       (rtags-executable-find rtags-rc-binary-name)
+		       cmds-path)))))))
+    (rtags-start-process-unless-running)
+    (add-hook 'c-mode-hook 'rtags-load-compile-commands)
+    (add-hook 'c++-mode-hook 'rtags-load-compile-commands)
+    (setq rtags-autostart-diagnostics t)
+    (rtags-diagnostics)
+    (setq rtags-display-result-backend 'ivy)
+    ;; Uncomment following lines to enable rtags autocomplete
+    ;;(setq rtags-completions-enabled t)
+    ;;(use-package company-rtags :ensure t)
+    ;;(push 'company-rtags company-backends)
+    ;;(use-package flycheck-rtags :ensure t)
+    (rtags-enable-standard-keybindings)))
+
+;; ;; setup navigation for rtags mode
+;; (progn
+;; (defun rtags-forward-line-show-in-other-window ()
+;; "Call 'forward-line' and 'rtags-show-in-other-window'."
+;; (interactive)
+;; (forward-line)
+;; (rtags-show-in-other-window))
+;; (defun rtags-backward-line-show-in-other-window ()
+;; "Call 'forward-line -1' and 'rtags-show-in-other-window'."
+;; (interactive)
+;; (forward-line -1)
+;; (rtags-show-in-other-window))
+;; (define-key rtags-mode-map (kbd "n") 'rtags-forward-line-show-in-other-window)
+;; (define-key rtags-mode-map (kbd "p") 'rtags-backward-line-show-in-other-window))
+
+;; snippets
+
+(use-package autoinsert
+  :hook
+  (find-file . auto-insert))
+
+(use-package yasnippet
+  :hook
+  (prog-mode . yas-minor-mode)
+  :diminish yas-minor-mode
+  :config
+  (use-package yasnippet-snippets
+    :defer t)
+  (add-to-list 'yas-snippet-dirs "~/.emacs.d/yasnippet-snippets")
+  (yas-reload-all))
+
+
+(use-package ivy-yasnippet
+  :bind ("C-x y" . ivy-yasnippet))
+
 
 ;; evil mode. disabled for now.
 ;; (use-package evil
 ;;  :ensure t)
+
+(use-package gitconfig-mode
+  :ensure t
+  :defer t)
+
+(use-package gitignore-mode
+  :ensure t
+  :defer t)
+
+(use-package magit
+  :ensure t
+  :custom
+  (magit-clone-default-directory (expand-file-name "~/Developer"))
+  (magit-completing-read-function 'ivy-completing-read "Force Ivy usage.")
+  :bind
+  (:map mode-specific-map
+        :prefix-map magit-prefix-map
+        :prefix "m"
+        (("a" . magit-stage-file) ; the closest analog to git add
+         ("b" . magit-blame)
+         ("B" . magit-branch)
+         ("c" . magit-checkout)
+         ("C" . magit-commit)
+         ("d" . magit-diff)
+         ("D" . magit-discard)
+         ("f" . magit-fetch)
+         ("g" . vc-git-grep)
+         ("G" . magit-gitignore)
+         ("i" . magit-init)
+         ("l" . magit-log)
+         ("m" . magit)
+         ("M" . magit-merge)
+         ("n" . magit-notes-edit)
+         ("p" . magit-pull-branch)
+         ("P" . magit-push-current)
+         ("r" . magit-reset)
+         ("R" . magit-rebase)
+         ("s" . magit-status)
+         ("S" . magit-stash)
+         ("t" . magit-tag)
+         ("T" . magit-tag-delete)
+         ("u" . magit-unstage)
+         ("U" . magit-update-index))))
+
+(use-package forge
+  :defer t
+  :after magit
+  :ensure t)
 
 ;; projects
 (use-package projectile
@@ -345,13 +524,14 @@
      projectile-root-top-down-recurring))
   (projectile-completion-system 'ivy))
 
+(setq projectile-enable-caching t)
+(setq projectile-indexing-method 'native)
+
 (use-package counsel-projectile
   :ensure t
   :after counsel projectile
   :config
   (counsel-projectile-mode))
-
-(load-theme 'manoj-dark t)
 
 (use-package display-line-numbers
   :bind ("<f6> l" . display-line-numbers-mode))
@@ -385,6 +565,25 @@
   (:map mode-specific-map
         ("C-g" . minibuffer-keyboard-quit)))
 
+(setq-default indent-tabs-mode nil)
+
+(use-package files
+  :hook
+  (before-save . delete-trailing-whitespace)
+  :custom
+  (require-final-newline t)
+  ;; backup settings
+  (backup-by-copying t)
+  (backup-directory-alist
+   `((".*" . ,(locate-user-emacs-file "backups"))))
+  (delete-old-versions t)
+  (kept-new-versions 6)
+  (kept-old-versions 2)
+  (version-control t))
+
+(use-package autorevert
+  :defer 0.1)
+
 ;; dired
 
 ;; make dired faster
@@ -404,30 +603,31 @@
 
 ;; fancy gui
 
-(load-theme 'manoj-dark)
+;; (use-package lor-theme
+;;   :config
+;;   (load-theme 'lor t)
+;;   :quelpa
+;;   (lor-theme :repo "a13/lor-theme" :fetcher github :version original))
+
+(use-package gruvbox-theme
+  :ensure t
+  :config
+  (load-theme 'gruvbox-dark-medium t))
+
+(use-package emojify
+  :ensure t
+    :hook (elfeed-search-mode-hook . emojify-mode)
+    :bind ("<f6> e". emojify-mode))
 
 (use-package olivetti
   :ensure t
   :custom
-  (olivetti-body-width 95))
+  (olivetti-body-width 125))
 
 (use-package font-lock+
   :defer t
   :quelpa
   (font-lock+ :repo "emacsmirror/font-lock-plus" :fetcher github))
-
-(use-package all-the-icons
-  :ensure t
-  :defer t
-  :config
-  (setq all-the-icons-mode-icon-alist
-        `(,@all-the-icons-mode-icon-alist
-          (package-menu-mode all-the-icons-octicon "package" :v-adjust 0.0)
-          (jabber-chat-mode all-the-icons-material "chat" :v-adjust 0.0)
-          (jabber-roster-mode all-the-icons-material "contacts" :v-adjust 0.0)
-          (telega-chat-mode all-the-icons-fileicon "telegram" :v-adjust 0.0
-                            :face all-the-icons-blue-alt)
-          (telega-root-mode all-the-icons-material "contacts" :v-adjust 0.0))))
 
 (use-package all-the-icons-dired
   :ensure t
@@ -471,3 +671,27 @@
   (tooltip-mode -1))
 
 ;;; init.el ends here
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   (quote
+    ("7661b762556018a44a29477b84757994d8386d6edee909409fabe0631952dad9" default)))
+ '(package-selected-packages
+   (quote
+    (ivy-rtags tab-bar spaceline gruvbox-theme doremi ace-link link-hint ace-jump-buffer modern-cpp-font-lock powerline yasnippet magit gitignore-mode gitconfig-mode emojify which-key mood-line all-the-icons-ivy all-the-icons-dired all-the-icons font-lock+ olivetti async gcmh counsel-projectile projectile dap-mode lsp-ivy lsp-ui lsp-mode nameless ipretty suggest eros highlight-sexp highlight-quoted highlight-defined avy-flycheck flycheck avy-zap avy helm-make ivy-rich counsel-world-clock counsel-web request counsel ivy-xref ivy amx company-shell company-quickhelp company rainbow-mode rainbow-identifiers rainbow-delimiters page-break-lines hl-todo highlight-escape-sequences highlight-numbers quelpa-use-package quelpa use-package rtags)))
+ '(projectile-project-root-functions
+   (quote
+    (projectile-root-local projectile-root-top-down projectile-root-bottom-up projectile-root-top-down-recurring)) nil nil "Customized with use-package projectile")
+ '(tool-bar-mode nil nil nil "Customized with use-package emacs")
+ '(tooltip-mode -1 nil nil "Customized with use-package tooltip"))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(hl-todo ((t (:inherit hl-todo :italic t))))
+ '(ivy-current-match ((t (:inherit (quote hl-line)))))
+ '(mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button)))))))
