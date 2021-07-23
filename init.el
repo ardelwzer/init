@@ -36,7 +36,6 @@
   (use-package-minimum-reported-time 0.005)
   (use-package-enable-imenu-support t))
 
-
 (use-package quelpa
   :ensure t
   :defer t
@@ -47,6 +46,13 @@
   :init
   (setq quelpa-use-package-inhibit-loading-quelpa t)
   :ensure t)
+
+(use-package use-package-custom-update
+  :quelpa
+  (use-package-custom-update
+   :repo "a13/use-package-custom-update"
+   :fetcher github
+   :version original))
 
 ;; global hotkeys
 (global-set-key (quote [M-down]) (quote scroll-up-line))
@@ -97,17 +103,6 @@
   :hook
   (prog-mode . rainbow-delimiters-mode))
 
-;; (use-package rainbow-identifiers
-;;   :ensure t
-;;   :custom
-;;   (rainbow-identifiers-cie-l*a*b*-lightness 80)
-;;   (rainbow-identifiers-cie-l*a*b*-saturation 50)
-;;   (rainbow-identifiers-choose-face-function
-;;    #'rainbow-identifiers-cie-l*a*b*-choose-face)
-;;   :hook
-;;   (emacs-lisp-mode . rainbow-identifiers-mode) actually, turn it off
-;;   (prog-mode . rainbow-identifiers-mode))
-
 (use-package rainbow-mode
   :ensure t
   :hook '(prog-mode help-mode))
@@ -120,6 +115,8 @@
         ("C-n" . company-select-next-or-abort)
         ("C-p" . company-select-previous-or-abort)
         ("C-c c" . company-complete))
+  :config
+  (setq company-idle-begin 0)
   :hook
   (after-init . global-company-mode))
 
@@ -127,8 +124,8 @@
   :ensure t
   :defer t
   :custom
-  (company-quickhelp-delay 1.5)
-  (company-quickhelp-mode 1))
+  (company-quickhelp-delay 0.5)
+  (company-quickhelp-mode 0.5))
 
 (use-package company-shell
   :ensure t
@@ -364,6 +361,10 @@
   :commands lsp
   :config
   (define-key lsp-mode-map (kbd "C-;") lsp-command-map)
+  (setq lsp-clients-clangd-args '("-j=4"
+                                  "-background-index"
+                                  "-header-insertion=never"
+                                  ))
   :custom
   (lsp-enable-xref t))
 
@@ -413,29 +414,51 @@
     (add-hook 'c-mode-hook 'rtags-load-compile-commands)
     (add-hook 'c++-mode-hook 'rtags-load-compile-commands)
     (setq rtags-autostart-diagnostics t)
+    (setq rtags-path "~/.emacs.d/rtags-2.37/bin/")
+    (setq rtags-rc-binary-name "rc")
+    (setq rtags-rdm-binary-name "rdm")
     (rtags-diagnostics)
     (setq rtags-display-result-backend 'ivy)
-    ;; Uncomment following lines to enable rtags autocomplete
-    ;;(setq rtags-completions-enabled t)
-    ;;(use-package company-rtags :ensure t)
-    ;;(push 'company-rtags company-backends)
-    ;;(use-package flycheck-rtags :ensure t)
     (rtags-enable-standard-keybindings)))
 
-;; ;; setup navigation for rtags mode
-;; (progn
-;; (defun rtags-forward-line-show-in-other-window ()
-;; "Call 'forward-line' and 'rtags-show-in-other-window'."
-;; (interactive)
-;; (forward-line)
-;; (rtags-show-in-other-window))
-;; (defun rtags-backward-line-show-in-other-window ()
-;; "Call 'forward-line -1' and 'rtags-show-in-other-window'."
-;; (interactive)
-;; (forward-line -1)
-;; (rtags-show-in-other-window))
-;; (define-key rtags-mode-map (kbd "n") 'rtags-forward-line-show-in-other-window)
-;; (define-key rtags-mode-map (kbd "p") 'rtags-backward-line-show-in-other-window))
+;; eshell
+(use-package em-smart
+  :defer t
+  :config
+  (eshell-smart-initialize)
+  :custom
+  (eshell-where-to-jump 'begin)
+  (eshell-review-quick-commands nil)
+  (eshell-smart-space-goes-to-end t))
+
+(use-package esh-help
+  :ensure t
+  :defer t
+  :config
+  (setup-esh-help-eldoc))
+
+(use-package esh-autosuggest
+  :ensure t
+  :hook (eshell-mode . esh-autosuggest-mode))
+
+(use-package esh-module
+  :custom-update
+  (eshell-modules-list '(eshell-tramp)))
+
+(use-package eshell-prompt-extras
+  :ensure t
+  :after (eshell esh-opt)
+  :custom
+  (eshell-prompt-function #'epe-theme-dakrone))
+
+(use-package eshell-toggle
+  :ensure t
+  :after projectile
+  :custom
+  (eshell-toggle-use-projectile-root t)
+  (eshell-toggle-run-command nil)
+  :bind
+  ("C-`" . eshell-toggle))
 
 ;; snippets
 
@@ -444,23 +467,19 @@
   (find-file . auto-insert))
 
 (use-package yasnippet
+  :ensure t
   :hook
   (prog-mode . yas-minor-mode)
   :diminish yas-minor-mode
   :config
   (use-package yasnippet-snippets
     :defer t)
-  (add-to-list 'yas-snippet-dirs "~/.emacs.d/yasnippet-snippets")
+  (setq yas-snippet-dirs '("~/.emacs.d/yasnippet-snippets"))
   (yas-reload-all))
 
 
 (use-package ivy-yasnippet
   :bind ("C-x y" . ivy-yasnippet))
-
-
-;; evil mode. disabled for now.
-;; (use-package evil
-;;  :ensure t)
 
 (use-package gitconfig-mode
   :ensure t
@@ -512,7 +531,7 @@
 
 ;; projects
 (use-package projectile
-  :defer 0.2
+  :defer 0.1
   :ensure t
   :bind
   (:map mode-specific-map ("p" . projectile-command-map))
@@ -535,14 +554,6 @@
 
 (use-package display-line-numbers
   :bind ("<f6> l" . display-line-numbers-mode))
-
-;; Modernise package menu
-
-;; (use-package paradox
-;;   :ensure t
-;;   :defer 1
-;;   :config
-;;   (paradox-enable))
 
 
 ;; Let's optimise a little bit
@@ -568,8 +579,6 @@
 (setq-default indent-tabs-mode nil)
 
 (use-package files
-  :hook
-  (before-save . delete-trailing-whitespace)
   :custom
   (require-final-newline t)
   ;; backup settings
@@ -603,21 +612,10 @@
 
 ;; fancy gui
 
-;; (use-package lor-theme
-;;   :config
-;;   (load-theme 'lor t)
-;;   :quelpa
-;;   (lor-theme :repo "a13/lor-theme" :fetcher github :version original))
-
-(use-package gruvbox-theme
+(use-package zenburn-theme
   :ensure t
   :config
-  (load-theme 'gruvbox-dark-medium t))
-
-(use-package emojify
-  :ensure t
-    :hook (elfeed-search-mode-hook . emojify-mode)
-    :bind ("<f6> e". emojify-mode))
+  (load-theme 'zenburn t))
 
 (use-package olivetti
   :ensure t
@@ -670,28 +668,19 @@
   :custom
   (tooltip-mode -1))
 
+;; orgmode
+(use-package org-roam
+      :ensure t
+      :custom
+      (org-roam-directory (file-truename "~/.keepit_org/roam/"))
+      :bind (("C-c n l" . org-roam-buffer-toggle)
+             ("C-c n f" . org-roam-node-find)
+             ("C-c n g" . org-roam-graph)
+             ("C-c n i" . org-roam-node-insert)
+             ("C-c n c" . org-roam-capture)
+             ;; Dailies
+             ("C-c n j" . org-roam-dailies-capture-today))
+      :config
+      (org-roam-setup))
+
 ;;; init.el ends here
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(custom-safe-themes
-   (quote
-    ("7661b762556018a44a29477b84757994d8386d6edee909409fabe0631952dad9" default)))
- '(package-selected-packages
-   (quote
-    (ivy-rtags tab-bar spaceline gruvbox-theme doremi ace-link link-hint ace-jump-buffer modern-cpp-font-lock powerline yasnippet magit gitignore-mode gitconfig-mode emojify which-key mood-line all-the-icons-ivy all-the-icons-dired all-the-icons font-lock+ olivetti async gcmh counsel-projectile projectile dap-mode lsp-ivy lsp-ui lsp-mode nameless ipretty suggest eros highlight-sexp highlight-quoted highlight-defined avy-flycheck flycheck avy-zap avy helm-make ivy-rich counsel-world-clock counsel-web request counsel ivy-xref ivy amx company-shell company-quickhelp company rainbow-mode rainbow-identifiers rainbow-delimiters page-break-lines hl-todo highlight-escape-sequences highlight-numbers quelpa-use-package quelpa use-package rtags)))
- '(projectile-project-root-functions
-   (quote
-    (projectile-root-local projectile-root-top-down projectile-root-bottom-up projectile-root-top-down-recurring)) nil nil "Customized with use-package projectile")
- '(tool-bar-mode nil nil nil "Customized with use-package emacs")
- '(tooltip-mode -1 nil nil "Customized with use-package tooltip"))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(hl-todo ((t (:inherit hl-todo :italic t))))
- '(ivy-current-match ((t (:inherit (quote hl-line)))))
- '(mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button)))))))
