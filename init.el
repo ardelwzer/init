@@ -63,7 +63,54 @@
   (indent-tabs-mode nil "Spaces!")
   (x-gtk-use-system-tooltips nil)
    (default-frame-alist '((menu-bar-lines 0)
-                         (tool-bar-lines -1))))
+                          (tool-bar-lines -1))))
+
+;; fancy gui
+
+(use-package zenburn-theme
+  :ensure t
+  :config
+  (load-theme 'zenburn t))
+
+(use-package olivetti
+  :ensure t
+  :custom
+  (olivetti-body-width 122))
+
+(use-package font-lock+
+  :defer t
+  :quelpa
+  (font-lock+ :repo "emacsmirror/font-lock-plus" :fetcher github))
+
+(use-package all-the-icons-dired
+  :ensure t
+  :hook
+  (dired-mode . all-the-icons-dired-mode))
+
+(use-package all-the-icons-ivy
+  :defer t
+  :ensure t
+  :after ivy
+  :custom
+  (all-the-icons-ivy-buffer-commands '() "Don't use for buffers.")
+  :config
+  (all-the-icons-ivy-setup))
+
+(use-package mood-line
+  :ensure t
+  :custom-face
+  (mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button))))))
+  :hook
+  (after-init . mood-line-mode))
+
+(use-package pixel-scroll
+  :config
+  (pixel-scroll-mode))
+
+(use-package tooltip
+  :defer t
+  :custom
+  (tooltip-mode -1))
 
 ;; some highlighting
 (use-package paren
@@ -103,35 +150,46 @@
   :hook
   (prog-mode . rainbow-delimiters-mode))
 
-(use-package rainbow-mode
-  :ensure t
-  :hook '(prog-mode help-mode))
+(use-package display-line-numbers
+  :bind ("<f6> l" . display-line-numbers-mode))
 
-;; autocomplete
-(use-package company
+;; Let's optimise a little bit
+
+(use-package gcmh
   :ensure t
+  :init
+  (gcmh-mode 1))
+
+;; disable suspend on C-z
+(use-package frame
   :bind
-  (:map company-active-map
-        ("C-n" . company-select-next-or-abort)
-        ("C-p" . company-select-previous-or-abort)
-        ("C-c c" . company-complete))
-  :config
-  (setq company-idle-begin 0)
-  :hook
-  (after-init . global-company-mode))
-
-(use-package company-quickhelp
-  :ensure t
-  :defer t
+  ("C-z" . nil)
   :custom
-  (company-quickhelp-delay 0.5)
-  (company-quickhelp-mode 0.5))
+  (initial-frame-alist '((vertical-scroll-bars))))
 
-(use-package company-shell
-  :ensure t
-  :after company
-  :defer t)
+;; C-c C-g always quits minibuffer
+(use-package delsel
+  :bind
+  (:map mode-specific-map
+        ("C-g" . minibuffer-keyboard-quit)))
 
+(use-package files
+  :custom
+  (require-final-newline t)
+  ;; backup settings
+  (backup-by-copying t)
+  (backup-directory-alist
+   `((".*" . ,(locate-user-emacs-file "backups"))))
+  (delete-old-versions t)
+  (kept-new-versions 6)
+  (kept-old-versions 2)
+  (version-control t))
+
+(use-package autorevert
+  :defer 0.1)
+
+
+;; setup completion
 ;; counsel-M-x can use this one
 (use-package amx :ensure t :defer t)
 
@@ -280,6 +338,35 @@
   :config
   (ace-link-setup-default))
 
+(use-package rainbow-mode
+  :ensure t
+  :hook '(prog-mode help-mode))
+
+;; autocomplete
+(use-package company
+  :ensure t
+  :bind
+  (:map company-active-map
+        ("C-n" . company-select-next-or-abort)
+        ("C-p" . company-select-previous-or-abort)
+        ("C-c c" . company-complete))
+  :config
+  (setq company-idle-begin 0)
+  :hook
+  (after-init . global-company-mode))
+
+(use-package company-quickhelp
+  :ensure t
+  :defer t
+  :custom
+  (company-quickhelp-delay 0.5)
+  (company-quickhelp-mode 0.5))
+
+(use-package company-shell
+  :ensure t
+  :after company
+  :defer t)
+
 (use-package flycheck
   :ensure t
   :hook
@@ -327,6 +414,8 @@
   (emacs-lisp-mode . highlight-sexp-mode)
   (lisp-mode . highlight-sexp-mode))
 
+;; elisp
+
 (use-package eros
   :ensure t
   :hook
@@ -350,9 +439,8 @@
   (nameless-global-aliases '())
   (nameless-private-prefix t))
 
-
-;;; Programming
 ;; LSP mode
+
 (use-package lsp-mode
   :ensure t
   :hook (
@@ -481,6 +569,8 @@
 (use-package ivy-yasnippet
   :bind ("C-x y" . ivy-yasnippet))
 
+;;; setup git
+
 (use-package gitconfig-mode
   :ensure t
   :defer t)
@@ -552,47 +642,6 @@
   :config
   (counsel-projectile-mode))
 
-(use-package display-line-numbers
-  :bind ("<f6> l" . display-line-numbers-mode))
-
-
-;; Let's optimise a little bit
-
-(use-package gcmh
-  :ensure t
-  :init
-  (gcmh-mode 1))
-
-;; disable suspend on C-z
-(use-package frame
-  :bind
-  ("C-z" . nil)
-  :custom
-  (initial-frame-alist '((vertical-scroll-bars))))
-
-;; C-c C-g always quits minibuffer
-(use-package delsel
-  :bind
-  (:map mode-specific-map
-        ("C-g" . minibuffer-keyboard-quit)))
-
-(setq-default indent-tabs-mode nil)
-
-(use-package files
-  :custom
-  (require-final-newline t)
-  ;; backup settings
-  (backup-by-copying t)
-  (backup-directory-alist
-   `((".*" . ,(locate-user-emacs-file "backups"))))
-  (delete-old-versions t)
-  (kept-new-versions 6)
-  (kept-old-versions 2)
-  (version-control t))
-
-(use-package autorevert
-  :defer 0.1)
-
 ;; dired
 
 ;; make dired faster
@@ -610,44 +659,6 @@
   (set-language-environment "UTF-8")
   (set-terminal-coding-system 'utf-8))
 
-;; fancy gui
-
-(use-package zenburn-theme
-  :ensure t
-  :config
-  (load-theme 'zenburn t))
-
-(use-package olivetti
-  :ensure t
-  :custom
-  (olivetti-body-width 125))
-
-(use-package font-lock+
-  :defer t
-  :quelpa
-  (font-lock+ :repo "emacsmirror/font-lock-plus" :fetcher github))
-
-(use-package all-the-icons-dired
-  :ensure t
-  :hook
-  (dired-mode . all-the-icons-dired-mode))
-
-(use-package all-the-icons-ivy
-  :defer t
-  :ensure t
-  :after ivy
-  :custom
-  (all-the-icons-ivy-buffer-commands '() "Don't use for buffers.")
-  :config
-  (all-the-icons-ivy-setup))
-
-(use-package mood-line
-  :ensure t
-  :custom-face
-  (mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button))))))
-  :hook
-  (after-init . mood-line-mode))
-
 (use-package winner
   :config
   (winner-mode 1))
@@ -659,20 +670,11 @@
                                ((control))))
   (mouse-wheel-progressive-speed nil))
 
-(use-package pixel-scroll
-  :config
-  (pixel-scroll-mode))
-
-(use-package tooltip
-  :defer t
-  :custom
-  (tooltip-mode -1))
-
 ;; orgmode
 (use-package org-roam
       :ensure t
       :custom
-      (org-roam-directory (file-truename "~/.keepit_org/roam/"))
+
       :bind (("C-c n l" . org-roam-buffer-toggle)
              ("C-c n f" . org-roam-node-find)
              ("C-c n g" . org-roam-graph)
