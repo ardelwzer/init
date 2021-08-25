@@ -54,11 +54,15 @@
    :fetcher github
    :version original))
 
+(require 'constants "~/.emacs.d/constants.el")
+
 ;; global hotkeys
 (global-set-key (quote [M-down]) (quote scroll-up-line))
 (global-set-key (quote [M-up]) (quote scroll-down-line))
 
 (use-package emacs
+  :bind
+  ("C-+" . enlarge-window)
   :custom
   (indent-tabs-mode nil "Spaces!")
   (x-gtk-use-system-tooltips nil)
@@ -67,10 +71,41 @@
 
 ;; fancy gui
 
-(use-package zenburn-theme
+;; (use-package zenburn-theme
+;;   :ensure t
+;;   :config
+;;   (load-theme 'zenburn t))
+
+(use-package modus-themes
   :ensure t
+  :init
+  ;; Add all your customizations prior to loading the themes
+  (setq modus-themes-italic-constructs nil
+        modus-themes-bold-constructs t
+        modus-themes-region '(bg-only no-extend))
+
+  ;; Load the theme files before enabling a theme
+  (modus-themes-load-themes)
   :config
-  (load-theme 'zenburn t))
+  ;; Load the theme of your choice:
+  (modus-themes-load-vivendi))
+
+(use-package time
+  :ensure t
+  :custom
+  (display-time-default-load-average nil)
+  :config
+  (display-time-mode t))
+
+(use-package page-break-lines
+  :ensure t
+  :diminish
+  :hook
+  (help-mode-hook . page-break-lines-mode)
+  (prog-mode-hook . page-break-lines-mode)
+  (outline-mode-hook . page-break-lines-mode)
+  (special-mode-hook . page-break-lines-mode)
+  (compilation-mode-hook . page-break-lines-mode))
 
 (use-package olivetti
   :ensure t
@@ -444,8 +479,8 @@
 (use-package lsp-mode
   :ensure t
   :hook (
-         ((c-mode c++-mode) . lsp-deferred)
-	 (lsp-mode . lsp-enable-which-key-integration))
+         ((c-mode c++-mode) . lsp-deferred))
+;;	 (lsp-mode . lsp-enable-which-key-integration))
   :commands lsp
   :config
   (define-key lsp-mode-map (kbd "C-;") lsp-command-map)
@@ -467,6 +502,8 @@
 ;; c++ config
 
 (use-package cc-mode
+  :hook
+  (lambda () (hs-minor-mode t))
   :config
   (c-set-offset 'substatement-open 0))
 
@@ -672,17 +709,20 @@
 
 ;; orgmode
 (use-package org-roam
-      :ensure t
-      :custom
-
-      :bind (("C-c n l" . org-roam-buffer-toggle)
-             ("C-c n f" . org-roam-node-find)
-             ("C-c n g" . org-roam-graph)
-             ("C-c n i" . org-roam-node-insert)
-             ("C-c n c" . org-roam-capture)
-             ;; Dailies
-             ("C-c n j" . org-roam-dailies-capture-today))
-      :config
-      (org-roam-setup))
+  :ensure t
+  :init
+  (setq org-roam-v2-ack t)
+  :custom
+  (org-roam-directory local-org-roam-path)
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . org-roam-node-find)
+         ("C-c n g" . org-roam-graph)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n c" . org-roam-capture)
+         ;; Dailies
+         ("C-c n j" . org-roam-dailies-capture-today)
+         ("C-c n p" . org-roam-dailies-goto-yesterday))
+  :config
+  (org-roam-setup))
 
 ;;; init.el ends here
