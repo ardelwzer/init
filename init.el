@@ -12,15 +12,14 @@
 (setq package-archives
       `(,@package-archives
         ("melpa" . "https://melpa.org/packages/")
-;;        ("marmalade" . "https://marmalade-repo.org/packages/")
         ("org" . "https://orgmode.org/elpa/")
-;;        ("user42" . "https://download.tuxfamily.org/user42/elpa/packages/")
         ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
-;;        ("sunrise" . "http://joseito.republika.pl/sunrise-commander/")
         ))
+(customize-set-variable 'package-enable-at-startup nil)
 (package-initialize)
 
-;; installing and configuring use-package
+(setq use-package-enable-imenu-support t)
+
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
   (package-install 'use-package))
@@ -29,12 +28,6 @@
   (require 'use-package))
 
 (put 'use-package 'lisp-indent-function 1)
-
-(use-package use-package-core
-  :custom
-  (use-package-verbose t)
-  (use-package-minimum-reported-time 0.005)
-  (use-package-enable-imenu-support t))
 
 (use-package quelpa
   :ensure t
@@ -56,39 +49,36 @@
 
 (require 'constants "~/.emacs.d/constants.el")
 
-;; global hotkeys
-(global-set-key (quote [M-down]) (quote scroll-up-line))
-(global-set-key (quote [M-up]) (quote scroll-down-line))
-
 (use-package emacs
   :bind
   ("C-+" . enlarge-window)
+  ("M-<down>" . scroll-up-line)
+  ("M-<up>" . scroll-down-line)
   :custom
+  (org-babel-load-languages '((emacs-lisp . t)
+                              (R . t)))
   (indent-tabs-mode nil "Spaces!")
   (x-gtk-use-system-tooltips nil)
    (default-frame-alist '((menu-bar-lines 0)
                           (tool-bar-lines -1))))
 
+(use-package cus-edit
+  :defer t
+  :custom
+  (custom-file null-device "Don't store customizations"))
+
 ;; fancy gui
 
-;; (use-package zenburn-theme
-;;   :ensure t
-;;   :config
-;;   (load-theme 'zenburn t))
-
-(use-package modus-themes
+(use-package zenburn-theme
   :ensure t
-  :init
-  ;; Add all your customizations prior to loading the themes
-  (setq modus-themes-italic-constructs nil
-        modus-themes-bold-constructs t
-        modus-themes-region '(bg-only no-extend))
-
-  ;; Load the theme files before enabling a theme
-  (modus-themes-load-themes)
   :config
-  ;; Load the theme of your choice:
-  (modus-themes-load-vivendi))
+  (load-theme 'zenburn t))
+
+(set-face-attribute 'default nil
+                    :family "Fira Code"
+                    :height 130
+                    :weight 'normal
+                    :width 'normal)
 
 (use-package time
   :ensure t
@@ -231,7 +221,6 @@
 (use-package ivy
   :ensure t
   :custom
-  ;; (ivy-re-builders-alist '((t . ivy--regex-fuzzy)))
   (ivy-count-format "%d/%d " "Show anzu-like counter")
   (ivy-use-selectable-prompt t "Make the prompt line selectable")
   :custom-face
@@ -386,7 +375,7 @@
         ("C-p" . company-select-previous-or-abort)
         ("C-c c" . company-complete))
   :config
-  (setq company-idle-begin 0)
+  (setq company-idle-begin 0.2)
   :hook
   (after-init . global-company-mode))
 
@@ -414,6 +403,12 @@
   (avy-flycheck-setup))
 
 ;; -- end autocomplete
+
+(use-package exec-path-from-shell
+  :ensure t
+  :config
+  (when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize)))
 
 
 ;; elisp
@@ -447,7 +442,9 @@
   :hook
   (clojure-mode . highlight-sexp-mode)
   (emacs-lisp-mode . highlight-sexp-mode)
-  (lisp-mode . highlight-sexp-mode))
+  (lisp-mode . highlight-sexp-mode)
+    :custom
+  (hl-sexp-background-color "#284F28"))
 
 ;; elisp
 
@@ -516,12 +513,7 @@
 (use-package ivy-rtags
   :ensure t)
 
-;; setup navigation for c/c++
-(use-package rtags
-  :ensure t
-  :config
-  (progn
-    (defun rtags-load-compile-commands ()
+(defun rtags-load-compile-commands ()
       "Load the closest compile_commands.json."
       (let* ((file-path (buffer-file-name))
 	     (path-list (split-string file-path "/")))
@@ -535,16 +527,27 @@
 	       (format "%s -J %s"
 		       (rtags-executable-find rtags-rc-binary-name)
 		       cmds-path)))))))
-    (rtags-start-process-unless-running)
-    (add-hook 'c-mode-hook 'rtags-load-compile-commands)
-    (add-hook 'c++-mode-hook 'rtags-load-compile-commands)
-    (setq rtags-autostart-diagnostics t)
-    (setq rtags-path "~/.emacs.d/rtags-2.37/bin/")
-    (setq rtags-rc-binary-name "rc")
-    (setq rtags-rdm-binary-name "rdm")
-    (rtags-diagnostics)
-    (setq rtags-display-result-backend 'ivy)
-    (rtags-enable-standard-keybindings)))
+
+;; setup navigation for c/c++
+(use-package rtags
+  :ensure t
+  :hook
+  (c++-mode . rtags-load-compile-commands)
+  (c-mode . rtags-load-compile-commands)
+  :config
+    (setq rtags-path local-rtags-path
+          rtags-rc-binary-name "rc"
+          rtags-rdm-binary-name "rdm"
+          rtags-display-result-backend 'ivy)
+    (rtags-enable-standard-keybindings)
+    (rtags-start-process-unless-running))
+
+;; R mode
+(use-package ess
+  :ensure t)
+
+(use-package poly-markdown
+  :ensure t)
 
 ;; eshell
 (use-package em-smart
