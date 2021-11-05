@@ -1,13 +1,16 @@
 ;;; package --- Summary
 ;;; My init.el file
 ;;; ver. 0.3
-
 ;;; Commentary:
 ;;; attempt to emacs: 7
 
 ;;; Code:
 
 ;;setup package management
+;; Add current directory to load path and nano-emacs
+(add-to-list 'load-path "~/.emacs.d/utils")
+;; (add-to-list 'load-path "~/.emacs.d/nano-emacs")
+
 (require 'package)
 (setq package-archives
       `(,@package-archives
@@ -47,27 +50,32 @@
    :fetcher github
    :version original))
 
-(require 'constants "~/.emacs.d/constants.el")
-
-(use-package emacs
-  :bind
-  ("C-+" . enlarge-window)
-  ("M-<down>" . scroll-up-line)
-  ("M-<up>" . scroll-down-line)
-  :custom
-  (org-babel-load-languages '((emacs-lisp . t)
-                              (R . t)))
-  (indent-tabs-mode nil "Spaces!")
-  (x-gtk-use-system-tooltips nil)
-   (default-frame-alist '((menu-bar-lines 0)
-                          (tool-bar-lines -1))))
+(require 'constants)
 
 (use-package cus-edit
   :defer t
   :custom
   (custom-file null-device "Don't store customizations"))
 
+(setq server-use-tcp t
+      server-socket-dir "~/.emacs.d/server")
+
 ;; fancy gui
+
+;; (require 'nano-layout)
+;; (require 'nano-theme-dark)
+;; (require 'nano-theme-light)
+;; (require 'nano-modeline)
+
+;; (require 'nano-faces)
+;; (nano-faces)
+
+;; (require 'nano-theme)
+;; (nano-theme)
+
+;; (require 'nano-splash)
+
+;; (require 'nano-writer)
 
 (use-package zenburn-theme
   :ensure t
@@ -75,17 +83,11 @@
   (load-theme 'zenburn t))
 
 (set-face-attribute 'default nil
-                    :family "Fira Code"
-                    :height 130
+                    :family "Ubuntu Mono"
+                    :height 150
                     :weight 'normal
                     :width 'normal)
 
-(use-package time
-  :ensure t
-  :custom
-  (display-time-default-load-average nil)
-  :config
-  (display-time-mode t))
 
 (use-package page-break-lines
   :ensure t
@@ -121,12 +123,12 @@
   :config
   (all-the-icons-ivy-setup))
 
-(use-package mood-line
-  :ensure t
-  :custom-face
-  (mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button))))))
-  :hook
-  (after-init . mood-line-mode))
+;; (use-package mood-line
+;;   :ensure t
+;;   :custom-face
+;;   (mode-line ((t (:inherit defauplt (:box (:line-width -1 :style released-button))))))
+;;   :hook
+;;   (after-init . mood-line-mode))
 
 (use-package pixel-scroll
   :config
@@ -177,6 +179,22 @@
 
 (use-package display-line-numbers
   :bind ("<f6> l" . display-line-numbers-mode))
+
+(setq blink-cursor-mode 0)
+(global-visual-line-mode t)
+(use-package emacs
+  :bind
+  ("C-+" . enlarge-window)
+  ("M-<down>" . scroll-up-line)
+  ("M-<up>" . scroll-down-line)
+  :custom
+  (org-babel-load-languages '((emacs-lisp . t)
+                              (R . t)))
+  (indent-tabs-mode nil "Spaces!")
+  (x-gtk-use-system-tooltips nil)
+  (default-frame-alist '((menu-bar-lines 0)
+                         (tool-bar-lines -1))))
+
 
 ;; Let's optimise a little bit
 
@@ -266,9 +284,6 @@
    ("O" . counsel-find-file-extern)
    ("p" . counsel-package)
    ("r" . counsel-recentf)
-   ("s g" . counsel-grep)
-   ("s r" . counsel-rg)
-   ("s s" . counsel-ag)
    ("t" . counsel-org-tag)
    ("v" . counsel-set-variable)
    ("w" . counsel-wmctrl)
@@ -404,12 +419,6 @@
 
 ;; -- end autocomplete
 
-(use-package exec-path-from-shell
-  :ensure t
-  :config
-  (when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize)))
-
 
 ;; elisp
 (use-package lisp
@@ -443,8 +452,8 @@
   (clojure-mode . highlight-sexp-mode)
   (emacs-lisp-mode . highlight-sexp-mode)
   (lisp-mode . highlight-sexp-mode)
-    :custom
-  (hl-sexp-background-color "#284F28"))
+  :custom
+  (hl-sexp-background-color "#e2e2e2"))
 
 ;; elisp
 
@@ -471,19 +480,48 @@
   (nameless-global-aliases '())
   (nameless-private-prefix t))
 
+(use-package vagrant
+  :ensure t)
+
+(use-package vagrant-tramp
+  :ensure t)
+
+;; fix shell
+
+(use-package exec-path-from-shell
+  :ensure t
+  :config
+  (when (memq window-system '(mac ns x))
+    (exec-path-from-shell-initialize)))
+
+
+;; cmake support
+
+(use-package cmake-mode
+  :ensure t
+  :mode ("CMakeLists\\.txt\\'" "\\.cmake\\'")
+  :hook (cmake-mode . lsp-deferred))
+
+(use-package cmake-font-lock
+  :ensure t
+  :after cmake-mode
+  :config (cmake-font-lock-activate))
+
 ;; LSP mode
 
 (use-package lsp-mode
   :ensure t
   :hook (
          ((c-mode c++-mode) . lsp-deferred))
-;;	 (lsp-mode . lsp-enable-which-key-integration))
   :commands lsp
   :config
-  (define-key lsp-mode-map (kbd "C-;") lsp-command-map)
-  (setq lsp-clients-clangd-args '("-j=4"
+  (define-key lsp-mode-map (kbd "S-l") lsp-command-map)
+  (setq lsp-headerline-breadcrumb-segments '(symbols))
+  (setq lsp-clients-clangd-args '("-j=2"
                                   "-background-index"
                                   "-header-insertion=never"
+                                  "--clang-tidy"
+                                  "--fallback-style=webkit"
                                   ))
   :custom
   (lsp-enable-xref t))
@@ -496,11 +534,18 @@
   :ensure t
   :commands lsp-ivy-workspace-symbol)
 
+;; (use-package eglot
+;;   :ensure t
+;;   :hook
+;;   ((c++-mode) . eglot-ensure))
+
+;; (add-to-list 'eglot-server-programs '(c++-mode . ("clangd" "-j=2 -background-index -header-insertion=never")))
+
+(use-package project
+  :ensure t)
 ;; c++ config
 
 (use-package cc-mode
-  :hook
-  (lambda () (hs-minor-mode t))
   :config
   (c-set-offset 'substatement-open 0))
 
@@ -709,6 +754,22 @@
                                ((shift) . 5)
                                ((control))))
   (mouse-wheel-progressive-speed nil))
+
+;; custom functions:
+(defun create-buffer (name)
+  "Create buffer with name NAME and checkout to the buffer."
+  (interactive
+   (list
+    (read-string "buffer name: ")))
+  (generate-new-buffer name)
+  (switch-to-buffer name))
+
+(defun setup-name ()
+  "setup frame title name for daemon"
+  (interactive)
+  (if (null server-name)
+      ()
+      (setq frame-title-format (format "%s" server-name ))))
 
 ;; orgmode
 (use-package org-roam
